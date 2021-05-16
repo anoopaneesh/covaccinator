@@ -139,6 +139,7 @@ function sendMail(available) {
       text=""
       available.map((item)=>{
           let temp = `${item.date} : ${item.center.length} slots available\n`
+          item.center.map(name => temp = temp+" "+name+"\n")
           text+=temp
       })
       var mailOptions = {
