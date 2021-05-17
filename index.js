@@ -163,6 +163,15 @@ cron.schedule("* * * * *", async () => {
   taskId++;
   let res = await main();
   console.log(res.available.length, "available");
+  if(res.available.length){
+    res.available.map(item => {
+      console.log(item.date)
+      console.log("-------------------")
+      item.center.map(center=>{
+        console.log(center)
+      })
+    })
+  }
   console.log(res.booked.length, "booked");
   if(res.available.length){
       console.log("Reached")
