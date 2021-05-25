@@ -59,7 +59,9 @@ async function getData() {
   return { centers: page1, date: new Date().toISOString() }
 }
 async function getMainData(page) {
-  const divCountA = await page.$$eval('.mat-main-field', (divs) => {
+  await page.waitForTimeout(1000)
+  const divCountA = await page.evaluate(() => {
+    console.log("Reached debugging step 2 inside")
     const availablePara = document.querySelector('.available-para')
     if (availablePara) return null
     let rows = document.getElementsByClassName('col-sm-12')
@@ -67,23 +69,30 @@ async function getMainData(page) {
     for (let key in rows) {
       const center = rows[key]
       if (center.innerHTML) {
-        const availDateContainer = document.querySelector('.active')
-        let availDate = parseInt(
-          availDateContainer.querySelector('p').textContent.split(' ')[0]
-        )
-
+        // let availDate = parseInt(
+        //   availDateContainer.querySelector('p').textContent.split(' ')[0]
+        // )
+        let availDate = 0
+        let dateArrayObj = document.querySelector('.carousel-inner')
+        let dateArrayP = dateArrayObj.querySelectorAll('p')
         const centerObj = {}
         const centerName = center.querySelector('.center-name-title')
         centerObj.name = centerName.textContent
         const ul = center.querySelectorAll('a')
+        let doseData = center.querySelector('.dosetotal')
+        console.log(doseData)
+        doseData = doseData && parseInt(doseData.querySelectorAll('span')['0'].textContent.split(" ")[1])
         centerObj.table = []
-        for (let a in ul) {
+        for (let a=0;a<ul.length;a++) {
           if (ul[a].innerHTML) {
             centerObj.table.push({
-              date: availDate++,
+              date: dateArrayP[availDate].textContent,
+              // dateArrayP[availDate].textContent
               slot: ul[a].innerHTML,
+              doseData,
             })
-          }
+            availDate++
+          }          
         }
         arr.push(centerObj)
       }
@@ -112,22 +121,39 @@ async function main() {
       if (obj.slot === ' Booked ') {
         let index = booked.findIndex((value) => value.date === obj.date)
         if (index !== -1) {
-          booked[index].center.push(center.name)
+          booked[index].center.push({
+            name: center.name,
+            doseData: obj.doseData,
+          })
         } else {
-          booked.push({ date: obj.date, center: [center.name] })
+          booked.push({
+            date: obj.date,
+            center: [{ name: center.name, doseData: obj.doseData }],
+          })
         }
       }
     })
   })
   let available = []
   data.centers.map((center) => {
+    let centerNameArray = center.name.split(' ')
+    if (centerNameArray[centerNameArray.length - 1] === 'Paid') {
+      return
+    }
     center.table.map((obj) => {
-      if (obj.slot !== ' Booked ' && obj.slot !== ' NA ') {
+
+      if (obj.slot !== ' Booked ' && obj.slot !== ' NA ' && obj.doseData > 0) {
         let index = available.findIndex((value) => value.date === obj.date)
         if (index !== -1) {
-          available[index].center.push(center.name)
+          available[index].center.push({
+            name: center.name,
+            doseData: obj.doseData,
+          })
         } else {
-          available.push({ date: obj.date, center: [center.name] })
+          available.push({
+            date: obj.date,
+            center: [{ name: center.name, doseData: obj.doseData }],
+          })
         }
       }
     })
@@ -141,13 +167,17 @@ function sendMail(available) {
   if (available.length) {
     text = ''
     available.map((item) => {
-      let temp = `${item.date} : ${item.center.length} slots available\n`
-      item.center.map((name) => (temp = temp + ' ' + name + '\n'))
+      let temp = `Date : ${item.date} : ${item.center.length} slots available\n---------------------------------------------------\n`
+      item.center.map(
+        ({ name, doseData }) =>
+          (temp = temp + ' ' + name + '\tdose1 : ' + doseData + '\n')
+      )
       text += temp
     })
     var mailOptions = {
       from: process.env.EMAIL,
-      to: 'anoopaneesh808@gmail.com, vipinvadakkot@gmail.com',
+      to: 'anoopaneesh808@gmail.com,vipinvadakkot@gmail.com',
+      //vipinvadakkot@gmail.com
       subject: text,
       text: text,
     }
@@ -171,7 +201,7 @@ cron.schedule('* * * * *', async () => {
       console.log(item.date)
       console.log('-------------------')
       item.center.map((center) => {
-        console.log(center)
+        console.log(`Center : ${center.name} Dose1 : ${center.doseData}`)
       })
     })
   }
@@ -181,6 +211,23 @@ cron.schedule('* * * * *', async () => {
     sendMail(res.available)
   }
 })
+// async function testA() {
+//   console.log('Fetch data , taskId : ', taskId)
+//   taskId++
+//   let res = await main()
+//   console.log(res.available.length, 'available')
+//   if (res.available.length) {
+//     res.available.map((item) => {
+//       console.log(item.date)
+//       console.log('-------------------')
+//       item.center.map((center) => {
+//         console.log(`Center : ${center.name} Dose1 : ${center.doseData}`)
+//       })
+//     })
+//   }
+//   console.log(res.booked.length, 'booked')
+// }
+// testA()
 
 app.listen('4005', () => {
   console.log('Server listening at port 4005')
