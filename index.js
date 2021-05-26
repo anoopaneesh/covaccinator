@@ -30,9 +30,9 @@ async function getData() {
     }
   })
   await page.goto('https://www.cowin.gov.in/home')
-  await page.waitForSelector('#mat-tab-label-0-1')
+  await page.waitForSelector('#mat-tab-label-0-2')
   await page.waitForTimeout(1000)
-  await page.click('#mat-tab-label-0-1')
+  await page.click('#mat-tab-label-0-2')
   await page.waitForTimeout(1000)
   await page.click('.ng-tns-c68-1')
   await page.waitForSelector('#mat-option-17')
@@ -61,7 +61,7 @@ async function getData() {
 async function getMainData(page) {
   await page.waitForTimeout(1000)
   const divCountA = await page.evaluate(() => {
-    console.log("Reached debugging step 2 inside")
+    console.log('Reached debugging step 2 inside')
     const availablePara = document.querySelector('.available-para')
     if (availablePara) return null
     let rows = document.getElementsByClassName('col-sm-12')
@@ -81,9 +81,13 @@ async function getMainData(page) {
         const ul = center.querySelectorAll('a')
         let doseData = center.querySelector('.dosetotal')
         console.log(doseData)
-        doseData = doseData && parseInt(doseData.querySelectorAll('span')['0'].textContent.split(" ")[1])
+        doseData =
+          doseData &&
+          parseInt(
+            doseData.querySelectorAll('span')['0'].textContent.split(' ')[1]
+          )
         centerObj.table = []
-        for (let a=0;a<ul.length;a++) {
+        for (let a = 0; a < ul.length; a++) {
           if (ul[a].innerHTML) {
             centerObj.table.push({
               date: dateArrayP[availDate].textContent,
@@ -92,7 +96,7 @@ async function getMainData(page) {
               doseData,
             })
             availDate++
-          }          
+          }
         }
         arr.push(centerObj)
       }
@@ -141,7 +145,6 @@ async function main() {
       return
     }
     center.table.map((obj) => {
-
       if (obj.slot !== ' Booked ' && obj.slot !== ' NA ' && obj.doseData > 0) {
         let index = available.findIndex((value) => value.date === obj.date)
         if (index !== -1) {
@@ -174,9 +177,10 @@ function sendMail(available) {
       )
       text += temp
     })
+    text += 'https://selfregistration.cowin.gov.in/\n'
     var mailOptions = {
       from: process.env.EMAIL,
-      to: 'anoopaneesh808@gmail.com,vipinvadakkot@gmail.com',
+      to: 'anoopaneesh808@gmail.com , vipinvadakkot@gmail.com',
       //vipinvadakkot@gmail.com
       subject: text,
       text: text,
@@ -188,6 +192,7 @@ function sendMail(available) {
         console.log('Email sent: ' + info.response)
       }
     })
+    sendWhatsappMessage(text)
   }
 }
 let taskId = 0
@@ -226,9 +231,35 @@ cron.schedule('* * * * *', async () => {
 //     })
 //   }
 //   console.log(res.booked.length, 'booked')
+//   if (res.available.length) {
+//     console.log('Reached')
+//     sendMail(res.available)
+//   }
 // }
 // testA()
-
+function sendWhatsappMessage(messageText) {
+  const {
+    ACCOUNT_SID,
+    AUTH_TOKEN,
+    PHONE_NUMBER1,
+    PHONE_NUMBER2,
+    PHONE_NUMBER3,
+  } = process.env
+  const users = [PHONE_NUMBER1, PHONE_NUMBER2, PHONE_NUMBER3]
+  const client = require('twilio')(ACCOUNT_SID, AUTH_TOKEN)
+  users.map((number) => {
+    client.messages
+      .create({
+        from: 'whatsapp:+14155238886',
+        body: messageText,
+        to: `whatsapp:${number}`,
+      })
+      .then((message) => console.log(message.sid))
+      .catch((err) => {
+        console.log(err)
+      })
+  })
+}
 app.listen('4005', () => {
   console.log('Server listening at port 4005')
 })
